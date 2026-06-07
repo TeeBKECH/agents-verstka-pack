@@ -1,0 +1,21 @@
+//- Mixins import here
+
+
+doctype html
+- const hasIntro = page.has_intro !== false && String(page.has_intro || '').toLowerCase() !== 'false'
+html(
+  lang="ru"
+  data-has-intro=(hasIntro ? 'true' : 'false')
+)
+  head
+    meta(charset="UTF-8")
+    meta(name="viewport" content="width=device-width, initial-scale=1.0")
+    title= page.title || 'Заголовок страницы'
+    if page.description
+      meta(name="description" content=page.description)
+  body.body
+    .page(class=`${page.page_class ? 'page--' + page.page_class : ''}`)
+      include ../components/header.pug
+      main.main(class=`${page.page_class ? 'main--' + page.page_class : ''}`)
+        block content
+      include ../components/footer.pug

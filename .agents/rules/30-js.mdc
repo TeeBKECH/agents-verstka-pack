@@ -1,0 +1,32 @@
+---
+description: Модульная структура JavaScript
+alwaysApply: true
+---
+
+# JavaScript Rules
+
+JavaScript должен быть модульным.
+
+## Структура
+
+```txt
+src/scripts/
+  components/
+  pages/
+  utils/
+  main.js
+```
+
+## Правила
+
+- `main.js` — только точка входа и инициализация.
+- Логика компонентов — `src/scripts/components/`.
+- Логика страниц — `src/scripts/pages/`.
+- Утилиты — `src/scripts/utils/`.
+- Повторяемую логику выносить в отдельные функции.
+
+## Запрещено
+
+- Писать всю логику в `main.js`.
+- Дублировать одинаковую логику в разных файлах.
+- Смешивать page-specific код и component-specific код.

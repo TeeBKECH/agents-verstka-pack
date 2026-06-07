@@ -1,0 +1,39 @@
+---
+description: Общая архитектура проекта и workflow агента
+alwaysApply: true
+---
+
+# Project Architecture
+
+Проект использует Vite + Pug + SCSS + JavaScript modules.
+
+Перед изменениями всегда изучай текущую структуру и существующие паттерны.
+
+Полные правила:
+
+- `docs/ai/project-rules.md`
+- `docs/ai/pug-rules.md`
+- `docs/ai/scss-rules.md`
+- `docs/ai/js-rules.md`
+
+## Обязательно
+
+1. Разметка только на Pug.
+2. Стили только на SCSS.
+3. JS только модульно.
+4. Каждая секция — отдельный файл в `src/components/sections/`.
+5. Переиспользуемая секция с разным контентом — Pug mixin в `src/components/mixins/`.
+6. Каждая секция или блок имеет отдельный SCSS-файл в `src/styles/components/`.
+7. Новый SCSS-файл должен быть подключен в `src/styles/styles.scss`.
+8. Изображения — только `src/assets/img/`.
+9. Шрифты — только `src/assets/fonts/`.
+10. В `public/` должен быть только `robots.txt`.
+
+## Запрещено
+
+- Создавать HTML вместо Pug.
+- Писать CSS вместо SCSS.
+- Дублировать разметку вместо `include` или `mixin`.
+- Класть assets в `public/`.
+- Использовать внешние шрифты.
+- Менять архитектуру без прямого запроса.

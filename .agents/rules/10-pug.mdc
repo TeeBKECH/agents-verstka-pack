@@ -1,0 +1,51 @@
+---
+description: Правила Pug-разметки, секций и mixin
+alwaysApply: true
+---
+
+# Pug Rules
+
+Вся разметка пишется на Pug.
+
+## Sections
+
+Новые секции создавать в:
+
+```txt
+src/components/sections/
+```
+
+Подключать на страницах через:
+
+```pug
+include ../components/sections/section-name.pug
+```
+
+Подключать в layout через:
+
+```pug
+include ../components/sections/header.pug
+include ../components/sections/footer.pug
+```
+
+## Mixins
+
+Если секция повторяется на разных страницах с другим контентом, перенести ее в:
+
+```txt
+src/components/mixins/
+```
+
+и оформить как Pug mixin.
+
+Миксин вызывается через:
+
+```pug
++MixinName(data)
+```
+
+## Запрещено
+
+- Дублировать повторяющуюся разметку.
+- Создавать HTML-файлы.
+- Писать большую секцию прямо внутри страницы, если она должна быть отдельным компонентом.

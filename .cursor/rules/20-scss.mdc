@@ -1,0 +1,77 @@
+---
+description: SCSS, BEM, переменные, миксины, assets
+alwaysApply: true
+---
+
+# SCSS Rules
+
+Все стили пишутся на SCSS.
+
+## Файлы
+
+- Переменные: `src/styles/variables.scss`
+- Миксины: `src/styles/mixins.scss`
+- Шрифты: `src/styles/fonts.scss`
+- Компоненты: `src/styles/components/`
+- Точка подключения: `src/styles/styles.scss`
+
+## Секции и блоки
+
+Каждая новая секция получает SCSS-файл с таким же именем:
+
+```txt
+src/components/sections/hero.pug
+src/styles/components/hero.scss
+```
+
+Каждый SCSS-файл компонента отвечает за один BEM-блок.
+
+Файл `hero.scss` должен иметь корневой класс `.hero`.
+
+## Селекторы
+
+Использовать человекочитаемые названия:
+
+```scss
+.hero {
+  $hero: &;
+
+  &_content {}
+  &_title {}
+  &_text {}
+  &_button {}
+}
+```
+
+Не использовать `.blk1`, `.item2`, `.h-t`.
+
+## Вложенность
+
+- Элементы: `&_element`
+- Модификаторы: `&--modifier` или `&-modifier`
+- Интерполяция `#{$block}_element` — только внутри модификатора блока.
+
+## Переменные
+
+Основные цвета, брейкпоинты и повторяемые значения хранить в `variables.scss`.
+
+## Медиазапросы
+
+Медиазапросы писать только через миксины из `mixins.scss`.
+
+```scss
+@include mediaMax($breakpoint-md) {
+  // styles
+}
+```
+
+## Assets
+
+Пути к изображениям в SCSS только через алиас:
+
+```scss
+$img: '@/assets/img';
+background-image: url('#{$img}/hero/bg.jpg');
+```
+
+Не использовать относительные пути `../../assets/img`.

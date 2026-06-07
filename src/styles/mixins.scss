@@ -1,0 +1,8 @@
+@use 'variables' as *;
+
+// Only Desctop Hover
+@mixin onlyDescHover() {
+  @media (hover: hover), (-ms-high-contrast: none) {
+    @content;
+  }
+}
