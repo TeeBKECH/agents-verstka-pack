@@ -15,7 +15,7 @@ html(
       meta(name="description" content=page.description)
   body.body
     .page(class=`${page.page_class ? 'page--' + page.page_class : ''}`)
-      include ../components/header.pug
+      include ../components/sections/header.pug
       main.main(class=`${page.page_class ? 'main--' + page.page_class : ''}`)
         block content
-      include ../components/footer.pug
+      include ../components/sections/footer.pug
