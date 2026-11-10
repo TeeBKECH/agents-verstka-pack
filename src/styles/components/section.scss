@@ -1,0 +1,30 @@
+@use '../core' as *;
+
+// Секция: вертикальный ритм и колонка контента. Стили содержимого — в файле своего блока.
+// Секция с фоном на всю ширину: фон на самой секции, контент — в &_container.
+.section {
+  position: relative;
+  padding-block: var(--section-py);
+
+  @if $use-desktop-scale {
+    @include mediaMin($scale-to) {
+      --section-bleed: max(0px, (100cqw / var(--page-zoom) - #{$design-desktop}) / 2);
+    }
+  }
+
+  &_container {
+    @include container;
+  }
+
+  &_title {
+    margin-bottom: 40px;
+    font-size: 40px;
+    font-weight: 600;
+    line-height: 1.15;
+
+    @include mediaMax($breakpoint-md) {
+      margin-bottom: 24px;
+      font-size: 28px;
+    }
+  }
+}

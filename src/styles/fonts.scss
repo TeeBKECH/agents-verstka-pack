@@ -1,0 +1,7 @@
+@use 'core' as *;
+
+// Локальные шрифты из src/assets/fonts, только woff2. Пример:
+// @include fontFace('Inter', 'inter/inter-regular', 400);
+// @include fontFace('Inter', 'inter/inter-medium', 500);
+//
+// Основной шрифт стоит предзагрузить: часть имени файла — в PRELOAD_FONTS (vite.config.mjs).

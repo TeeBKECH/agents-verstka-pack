@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import path from 'path'
 import os from 'node:os'
 import fs from 'fs'
@@ -8,15 +8,29 @@ import prettier from 'prettier'
 import autoprefixer from 'autoprefixer'
 import { viteStaticCopy } from 'vite-plugin-static-copy'
 
-const SRC_DIR = path.resolve(process.cwd(), 'src')
+const ROOT = process.cwd()
+const SRC_DIR = path.resolve(ROOT, 'src')
+const ASSETS_DIR = path.join(SRC_DIR, 'assets')
+const DATA_DIR = path.join(SRC_DIR, 'data')
+const MIXINS_DIR = path.join(SRC_DIR, 'components', 'mixins')
+const MIXINS_INDEX = path.join(MIXINS_DIR, '_all.pug')
 const PAGES_GLOB = 'src/pages/**/*.pug'
 const MAIN_ENTRY = path.resolve(SRC_DIR, 'scripts/main.js')
+
+// Сборка для CMS (Битрикс, WordPress): npm run build:cms (vite build --mode cms).
+// Имена без хешей, пути в CSS относительные, HTML-страницы не создаются.
+// Папка — CMS_OUT_DIR в .env.cms.local (например ../cms/www/local/templates/site/assets), по умолчанию build-cms.
+
+// Шрифты, которые нужно предзагрузить на страницах сборки: часть имени файла из src/assets/fonts.
+// В CMS предзагрузку ставит шаблон сайта (header.php) по тем же файлам.
+const PRELOAD_FONTS = []
 
 /** Реальный порт после listen + все IPv4 — чтобы не гадать 5173/5174 и не брать 172.* Hyper‑V вслепую */
 function logDevLanUrls() {
   return {
     name: 'log-dev-lan-urls',
     configureServer(server) {
+      if (server.config.logLevel === 'error') return
       server.httpServer?.once('listening', () => {
         const raw = server.httpServer?.address()
         if (!raw || typeof raw === 'string') return
@@ -41,9 +55,10 @@ function logDevLanUrls() {
   }
 }
 
-// Парсим верхние мета-комментарии:
+// Верхние мета-комментарии страницы:
 // //- @title: ...
 // //- @description: ...
+// //- @page: имя страницы для data-page и scripts/pages/<имя>.js
 function parseMetaFromPug(filePath) {
   const src = fs.readFileSync(filePath, 'utf8')
   const meta = {}
@@ -52,7 +67,7 @@ function parseMetaFromPug(filePath) {
     if (!trimmed) continue
     const m = trimmed.match(/^\/\/-\s*@([\w-]+)\s*:\s*(.+)$/)
     if (m) {
-      meta[m[1]] = m[2]
+      meta[m[1]] = m[2].trim()
       continue
     }
     if (!trimmed.startsWith('//-')) break
@@ -61,45 +76,68 @@ function parseMetaFromPug(filePath) {
 }
 
 function scanPages() {
-  const files = fg.sync(PAGES_GLOB, { dot: false })
-  return files.map((file) => {
-    const rel = path.relative(path.join(SRC_DIR, 'pages'), file)
-    const name = rel.replace(/\.pug$/, '') // about/index -> about/index
-    const outName = `${name}.html` // about/index.html
+  return fg.sync(PAGES_GLOB, { dot: false }).sort().map((file) => {
+    const rel = path.relative(path.join(SRC_DIR, 'pages'), file).split(path.sep).join('/')
+    const name = rel.replace(/\.pug$/, '') // about/index
     const meta = parseMetaFromPug(file)
-    return { file, name, outName, meta }
+    return {
+      file,
+      name,
+      outName: `${name}.html`,
+      href: `${name}.html`,
+      title: meta.title || name,
+      description: meta.description || '',
+      meta,
+    }
   })
 }
 
-// Простая инъекция в конец <body>
-function injectToBody(html, injectString) {
-  if (/(<\/body\s*>)/i.test(html)) {
-    return html.replace(/<\/body\s*>/i, `${injectString}\n</body>`)
+// src/data/*.json → объект data в Pug: data/site.json → data.site, data/office-list.json → data.officeList
+function loadData() {
+  const data = {}
+  for (const file of fg.sync('*.json', { cwd: DATA_DIR })) {
+    const key = file.replace(/\.json$/, '').replace(/[-_.]+(\w)/g, (_, c) => c.toUpperCase())
+    try {
+      data[key] = JSON.parse(fs.readFileSync(path.join(DATA_DIR, file), 'utf8'))
+    } catch (e) {
+      throw new Error(`[data] Ошибка в src/data/${file}: ${e.message}`)
+    }
   }
-  return html + injectString
+  return data
 }
 
-// Простая инъекция в конец <head>
-function injectToHead(html, injectString) {
-  if (/(<\/head\s*>)/i.test(html)) {
-    return html.replace(/<\/head\s*>/i, `${injectString}\n</head>`)
+// Pug-плагин: components/mixins/_all.pug не хранится на диске — собирается из всех файлов папки mixins.
+// Новый миксин подключается сам, достаточно создать файл.
+const mixinsIndexPlugin = {
+  read(filename, loadOptions) {
+    if (path.resolve(filename) === MIXINS_INDEX) {
+      return fg
+        .sync('**/*.pug', { cwd: MIXINS_DIR, ignore: ['_all.pug'] })
+        .sort()
+        .map((f) => `include ./${f}`)
+        .join('\n')
+    }
+    return fs.readFileSync(filename, 'utf8')
+  },
+}
+
+function createLocals(page, pages, { isProd, base }) {
+  const assetBase = isProd ? `${base}assets/` : '/src/assets/'
+  return {
+    page: {
+      ...page.meta,
+      name: page.meta.page || page.name.replace(/\//g, '-'),
+      title: page.title,
+      description: page.description,
+    },
+    pages,
+    data: loadData(),
+    isProd,
+    // Путь к файлу из src/assets: asset('img/hero/bg.jpg')
+    asset: (p) => assetBase + String(p).replace(/^\/+/, ''),
+    // Есть ли файл в src/assets — например, webp/avif-пара для картинки
+    hasAsset: (p) => fs.existsSync(path.join(ASSETS_DIR, String(p).replace(/^\/+/, ''))),
   }
-  return injectString + '\n' + html
-}
-
-function replaceJpgToWebpInHtml(html) {
-  return html.replace(
-    /(<img\b[^>]*\bsrc=["'])([^"']+\.jpe?g)(["'][^>]*>)/gi,
-    (m, p1, src, p3) => `${p1}${src.replace(/\.jpe?g$/i, '.webp')}${p3}`,
-  )
-}
-
-function compilePug(file, locals, pretty) {
-  const fn = pug.compileFile(file, {
-    basedir: SRC_DIR, // чтобы include/extends работали от src
-    pretty,
-  })
-  return fn(locals)
 }
 
 function renderPug(file, locals, pretty) {
@@ -107,23 +145,35 @@ function renderPug(file, locals, pretty) {
     basedir: SRC_DIR,
     pretty,
     filename: file,
+    plugins: [mixinsIndexPlugin],
     ...locals,
   })
 }
 
-// Плагин, который дает MPA на Pug:
-// - dev: страница компилируется по запросу, HMR через /@vite/client, никакой полной перекомпиляции
-// - build: генерим html для всех страниц, инъектим итоговые js/css, заменяем .jpg→.webp (опционально) и prettify
-function pugMpaPlugin({ injectWebpOnProd = false, prettifyOnProd = true } = {}) {
+// Простая инъекция в конец <body>
+function injectToBody(html, injectString) {
+  if (/<\/body\s*>/i.test(html)) return html.replace(/<\/body\s*>/i, `${injectString}\n</body>`)
+  return html + injectString
+}
+
+// Простая инъекция в конец <head>
+function injectToHead(html, injectString) {
+  if (/<\/head\s*>/i.test(html)) return html.replace(/<\/head\s*>/i, `${injectString}\n</head>`)
+  return injectString + '\n' + html
+}
+
+// MPA на Pug:
+// - dev: страница компилируется по запросу, правка .pug или .json — перезагрузка страницы
+// - build: HTML всех страниц с итоговыми css/js; для CMS-сборки HTML не нужен
+function pugMpaPlugin({ prettifyOnProd = true, isCms = false } = {}) {
   let config
   let pages = scanPages()
 
   function resolvePageByUrlPath(urlPathname) {
-    // Нормализуем: / -> /index.html, /about -> /about.html
-    let p = urlPathname
+    let p = decodeURIComponent(urlPathname)
     if (p === '/' || p === '') p = '/index.html'
+    if (p.endsWith('/')) p = `${p}index.html`
     if (!p.endsWith('.html')) p = `${p}.html`
-    // pages имеют outName без ведущего слеша
     const withoutSlash = p.replace(/^\//, '')
     return pages.find((pg) => pg.outName === withoutSlash)
   }
@@ -137,20 +187,22 @@ function pugMpaPlugin({ injectWebpOnProd = false, prettifyOnProd = true } = {}) 
     },
 
     configureServer(server) {
-      // Рескан страниц при добавлении/удалении .pug
-      const rescan = () => {
-        pages = scanPages()
-        server.ws.send({ type: 'full-reload' })
-      }
-      server.watcher.on('add', (file) => file.endsWith('.pug') && rescan())
-      server.watcher.on('unlink', (file) => file.endsWith('.pug') && rescan())
-
-      // На любое изменение .pug — просто full-reload (быстро в Vite)
+      const reload = () => server.ws.send({ type: 'full-reload' })
+      const isWatched = (file) => file.endsWith('.pug') || file.startsWith(DATA_DIR)
+      server.watcher.add(DATA_DIR)
+      server.watcher.on('add', (file) => {
+        if (file.endsWith('.pug')) pages = scanPages()
+        if (isWatched(file)) reload()
+      })
+      server.watcher.on('unlink', (file) => {
+        if (file.endsWith('.pug')) pages = scanPages()
+        if (isWatched(file)) reload()
+      })
       server.watcher.on('change', (file) => {
-        if (file.endsWith('.pug')) server.ws.send({ type: 'full-reload' })
+        if (file.startsWith(path.join(SRC_DIR, 'pages'))) pages = scanPages()
+        if (isWatched(file)) reload()
       })
 
-      // Отдаём HTML как результат компиляции Pug
       server.middlewares.use(async (req, res, next) => {
         try {
           if (!req.url) return next()
@@ -158,32 +210,12 @@ function pugMpaPlugin({ injectWebpOnProd = false, prettifyOnProd = true } = {}) 
           const page = resolvePageByUrlPath(url.pathname)
           if (!page) return next()
 
-          let html = renderPug(
-            page.file,
-            {
-              page: {
-                title: page.meta.title || 'Страница',
-                description: page.meta.description || '',
-                ...page.meta,
-              },
-              isProd: false,
-            },
-            true,
-          )
-
-          if (html && typeof html.then === 'function') {
-            // на всякий случай; у renderFile не должно быть Promise
-            html = await html
-          }
-          if (typeof html !== 'string') {
-            throw new Error(`Pug render returned non-string for ${page.file}: ${typeof html}`)
-          }
-
+          let html = renderPug(page.file, createLocals(page, pages, { isProd: false, base: '/' }), true)
           html = injectToBody(
             html,
             [
               '<script type="module" src="/@vite/client"></script>',
-              `<script type="module" src="${config.base || '/'}${path.posix.join('src', 'scripts', 'main.js')}"></script>`,
+              `<script type="module" src="${config.base || '/'}src/scripts/main.js"></script>`,
             ].join('\n'),
           )
 
@@ -195,70 +227,39 @@ function pugMpaPlugin({ injectWebpOnProd = false, prettifyOnProd = true } = {}) 
       })
     },
 
-    // На билде генерируем HTML для всех страниц и эмитим как ассеты
     async generateBundle(options, bundle) {
+      if (isCms) return
+
       const chunks = Object.values(bundle)
       const entryChunk = chunks.find(
-        (c) =>
-          c.type === 'chunk' && c.isEntry && (c.facadeModuleId === MAIN_ENTRY || c.name === 'app'),
+        (c) => c.type === 'chunk' && c.isEntry && (c.facadeModuleId === MAIN_ENTRY || c.name === 'app'),
       )
-
       if (!entryChunk) {
-        this.error(
-          '[pug-mpa] Не найден entry chunk. Проверьте build.rollupOptions.input -> src/scripts/main.js',
-        )
+        this.error('[pug-mpa] Не найден entry chunk. Проверьте build.rollupOptions.input -> src/scripts/main.js')
       }
 
-      const entryJsPath = entryChunk.fileName
-      const importedCss = Array.from(entryChunk.viteMetadata?.importedCss || [])
-      const extraCss = chunks
-        .filter((a) => a.type === 'asset' && a.fileName.endsWith('.css'))
+      const base = config.base || '/'
+      const cssFiles = Array.from(entryChunk.viteMetadata?.importedCss || [])
+      const fontFiles = chunks
+        .filter((a) => a.type === 'asset' && /\.woff2$/.test(a.fileName))
+        .filter((a) => PRELOAD_FONTS.some((name) => a.fileName.includes(name)))
         .map((a) => a.fileName)
-      const cssFiles = Array.from(new Set([...importedCss, ...extraCss]))
-
-      const isProd = true
 
       for (const page of pages) {
         try {
-          let html = renderPug(
-            page.file,
-            {
-              page: {
-                title: page.meta.title || 'Страница',
-                description: page.meta.description || '',
-                ...page.meta,
-              },
-              isProd,
-            },
-            false,
-          )
+          let html = renderPug(page.file, createLocals(page, pages, { isProd: true, base }), false)
 
-          if (typeof html !== 'string') {
-            // На всякий случай (renderFile всегда строка)
-            throw new Error(`Pug render returned non-string for ${page.file}: ${typeof html}`)
-          }
-
-          // CSS в <head>
-          if (cssFiles.length) {
-            const cssTags = cssFiles
-              .map((href) => `<link rel="stylesheet" href="${config.base || '/'}${href}">`)
-              .join('\n')
-            html = injectToHead(html, cssTags)
-          }
-
-          // JS в конец <body>
-          html = injectToBody(
-            html,
-            `<script type="module" crossorigin src="${config.base || '/'}${entryJsPath}"></script>`,
-          )
-
-          if (injectWebpOnProd) {
-            // html = replaceJpgToWebpInHtml(html)
-          }
+          const headTags = [
+            ...fontFiles.map(
+              (href) => `<link rel="preload" href="${base}${href}" as="font" type="font/woff2" crossorigin>`,
+            ),
+            ...cssFiles.map((href) => `<link rel="stylesheet" href="${base}${href}">`),
+          ]
+          if (headTags.length) html = injectToHead(html, headTags.join('\n'))
+          html = injectToBody(html, `<script type="module" crossorigin src="${base}${entryChunk.fileName}"></script>`)
 
           if (prettifyOnProd) {
             try {
-              // ВАЖНО: ждём промис!
               html = await prettier.format(html, {
                 parser: 'html',
                 printWidth: 100,
@@ -272,136 +273,79 @@ function pugMpaPlugin({ injectWebpOnProd = false, prettifyOnProd = true } = {}) 
             }
           }
 
-          // Доп. защита: если вдруг куда-то просочился Promise
-          if (/$$object Promise$$/.test(html)) {
-            this.warn(
-              `[pug-mpa] В ${page.outName} обнаружен текст "[object Promise]". Проверьте кастомные пост-обработки HTML.`,
-            )
-          }
-
-          this.emitFile({
-            type: 'asset',
-            fileName: page.outName,
-            source: html, // гарантированно строка
-          })
+          this.emitFile({ type: 'asset', fileName: page.outName, source: html })
         } catch (err) {
-          this.warn(`[pug-mpa] Не удалось сгенерировать ${page.outName}: ${err?.message || err}`)
+          this.error(`[pug-mpa] Не удалось собрать ${page.outName}: ${err?.message || err}`)
         }
       }
     },
   }
 }
 
-// Только для build:wp: заменяет url(/assets/...) на относительные пути (../fonts/, ../media/),
-// чтобы при подключении из WP-темы (assets/css/...) шрифты и картинки грузились корректно.
-function cssRelativeAssetsPlugin() {
-  return {
-    name: 'css-relative-assets',
-    apply: 'build',
-    generateBundle(_, bundle) {
-      if (process.env.BUILD_TARGET !== 'wp') return
-      for (const item of Object.values(bundle)) {
-        if (item.type === 'asset' && item.fileName?.endsWith('.css') && typeof item.source === 'string') {
-          item.source = item.source
-            .replace(/url\(\/assets\/fonts\//g, 'url(../fonts/')
-            .replace(/url\(\/assets\/media\//g, 'url(../media/')
-        }
-      }
-    },
-  }
-}
-
-// Плагин для разрешения @ алиаса в CSS url()
+// @/ в url() стилей → относительный путь от файла стиля (работает и в dev, и в сборке)
 function cssAliasPlugin() {
   return {
     name: 'css-alias-resolver',
     enforce: 'pre',
     transform(code, id) {
-      if (id.endsWith('.css') || id.endsWith('.scss') || id.endsWith('.sass')) {
-        // Заменяем @/ на относительный путь, который работает и в dev, и в build
-        const resolved = code.replace(/url\(['"]@\/([^'"]+)['"]\)/g, (match, assetPath) => {
-          try {
-            const resolvedPath = path.resolve(SRC_DIR, assetPath)
-            const fileDir = path.dirname(id)
-            let relativePath = path.relative(fileDir, resolvedPath).replace(/\\/g, '/')
-
-            // В Windows пути могут быть без ./ в начале, добавляем если нужно
-            if (!relativePath.startsWith('.')) {
-              relativePath = './' + relativePath
-            }
-
-            // Нормализуем путь: убираем лишние сегменты и исправляем двойные слеши
-            relativePath = relativePath.replace(/\/\.\//g, '/').replace(/\/+/g, '/')
-
-            // Используем относительный путь, который работает в обоих режимах
-            return `url('${relativePath}')`
-          } catch (e) {
-            // Если не удалось разрешить, возвращаем оригинал
-            console.warn(`[css-alias-resolver] Failed to resolve @/${assetPath}:`, e.message)
-            return match
-          }
-        })
-        return resolved !== code ? resolved : null
-      }
+      if (!/\.(s?css|sass)$/.test(id)) return null
+      const resolved = code.replace(/url\(['"]@\/([^'"]+)['"]\)/g, (match, assetPath) => {
+        let relativePath = path.relative(path.dirname(id), path.resolve(SRC_DIR, assetPath)).replace(/\\/g, '/')
+        if (!relativePath.startsWith('.')) relativePath = './' + relativePath
+        return `url('${relativePath}')`
+      })
+      return resolved !== code ? resolved : null
     },
   }
 }
 
-export default defineConfig(({ mode }) => {
-  const isProd = mode === 'production'
-  const isWpBuild = process.env.BUILD_TARGET === 'wp'
+// Папки src/assets, которые копируются в сборку как есть (картинки, видео…).
+// Шрифты не копируем: их подключает CSS, Vite кладёт их в fonts/ сам.
+function staticAssetTargets(dest) {
+  if (!fs.existsSync(ASSETS_DIR)) return []
+  return fs
+    .readdirSync(ASSETS_DIR, { withFileTypes: true })
+    .filter((d) => d.isDirectory() && d.name !== 'fonts')
+    .filter((d) => fg.sync('**/*', { cwd: path.join(ASSETS_DIR, d.name), ignore: ['**/.gitkeep'] }).length)
+    .map((d) => ({ src: `src/assets/${d.name}`, dest }))
+}
+
+export default defineConfig(({ command, mode }) => {
+  const IS_CMS = mode === 'cms'
+  const env = loadEnv(mode, ROOT, '')
+  const CMS_OUT_DIR = path.resolve(ROOT, env.CMS_OUT_DIR || 'build-cms')
+  const isProd = command === 'build'
   const devPort = Number(process.env.PORT) || 5173
+  const prefix = IS_CMS ? '' : 'assets/'
+  const hash = IS_CMS ? '' : '.[hash]'
+  const copyTargets = staticAssetTargets(IS_CMS ? '.' : 'assets')
 
   return {
-    // Если используете public/assets — отключите плагин копирования ниже
     plugins: [
       logDevLanUrls(),
-      pugMpaPlugin({
-        injectWebpOnProd: false,
-        prettifyOnProd: true,
-      }),
-
-      // Вариант, если хотите оставить src/assets -> build/assets
-      // Если перейдёте на public/assets, удалите этот плагин целиком.
-      viteStaticCopy({
-        targets: [{ src: 'src/assets', dest: '' }], // -> build/assets/*
-        // noErrorOnMissing: true можно не указывать — поведение по умолчанию
-      }),
-
-      cssRelativeAssetsPlugin(),
+      pugMpaPlugin({ prettifyOnProd: true, isCms: IS_CMS }),
+      ...(copyTargets.length ? [viteStaticCopy({ targets: copyTargets })] : []),
       cssAliasPlugin(),
-
-      // Для старых браузеров можно раскомментировать:
-      // legacy({
-      //   targets: ['defaults', 'not IE 11'],
-      // }),
     ],
 
-    root: process.cwd(),
-    base: '/', // можно поменять при деплое на поддиректорию
-    publicDir: 'public', // кладите сюда только статические ассеты без обработки (например, public/assets)
+    root: ROOT,
+    // CMS: относительные пути — сборка работает из любой папки шаблона
+    base: IS_CMS ? './' : '/',
+    publicDir: IS_CMS ? false : 'public',
 
     resolve: {
-      alias: {
-        '@': SRC_DIR,
-      },
+      alias: { '@': SRC_DIR },
       extensions: ['.js', '.scss', '.pug'],
     },
 
     css: {
       devSourcemap: !isProd,
-      postcss: {
-        plugins: [autoprefixer()],
-      },
-      modules: {
-        // Имена классов как в webpack-конфиге
-        generateScopedName: isProd ? '[hash:base64:6]' : '[name]__[local]__[hash:base64:5]',
-      },
+      postcss: { plugins: [autoprefixer()] },
+      // Переменные и миксины каждый SCSS-файл подключает сам: @use '../core' as *;
       preprocessorOptions: {
         scss: {
-          additionalData: `@use "@/styles/variables" as *; @use "@/styles/mixins" as *;`,
           quietDeps: true,
-          silenceDeprecations: ['import'], // глушим @import deprecation в вашем коде
+          silenceDeprecations: ['import'],
         },
       },
     },
@@ -415,26 +359,24 @@ export default defineConfig(({ mode }) => {
     },
 
     build: {
-      outDir: 'build',
-      emptyOutDir: true,
+      outDir: IS_CMS ? CMS_OUT_DIR : 'build',
+      // Папку вне проекта не очищаем: имена без хешей, файлы просто перезаписываются
+      emptyOutDir: !IS_CMS || CMS_OUT_DIR.startsWith(ROOT + path.sep),
       sourcemap: false,
       cssCodeSplit: true,
+      // Шрифты — всегда отдельными файлами: их предзагружают и кешируют
+      assetsInlineLimit: (file) => (/\.(woff2?|ttf|otf)$/i.test(file) ? false : undefined),
       rollupOptions: {
-        // Нам нужен js-энтрипоинт, чтобы собрать бандл и css
-        input: {
-          app: MAIN_ENTRY,
-        },
+        input: { app: MAIN_ENTRY },
         output: {
-          entryFileNames: isWpBuild ? 'assets/js/[name].js' : 'assets/js/[name].[hash].js',
-          chunkFileNames: isWpBuild ? 'assets/js/[name].js' : 'assets/js/[name].[hash].js',
+          entryFileNames: `${prefix}js/[name]${hash}.js`,
+          chunkFileNames: `${prefix}js/[name]${hash}.js`,
           assetFileNames: (assetInfo) => {
-            const ext = path.extname(assetInfo.name || '').toLowerCase()
-            const hashPart = isWpBuild ? '' : '.[hash]'
-            if (ext === '.css') return `assets/css/[name]${hashPart}[extname]`
-            if (/\.(woff2?|ttf|eot|otf)$/.test(ext)) return `assets/fonts/[name]${hashPart}[extname]`
-            if (/\.(png|jpe?g|webp|svg|gif|avif)$/.test(ext))
-              return `assets/media/[name]${hashPart}[extname]`
-            return `assets/[name]${hashPart}[extname]`
+            const ext = path.extname(assetInfo.names?.[0] || assetInfo.name || '').toLowerCase()
+            if (ext === '.css') return `${prefix}css/[name]${hash}[extname]`
+            if (/\.(woff2?|ttf|eot|otf)$/.test(ext)) return `${prefix}fonts/[name]${hash}[extname]`
+            if (/\.(png|jpe?g|webp|avif|svg|gif)$/.test(ext)) return `${prefix}media/[name]${hash}[extname]`
+            return `${prefix}[name]${hash}[extname]`
           },
         },
       },

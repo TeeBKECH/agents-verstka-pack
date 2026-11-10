@@ -25,9 +25,13 @@ alwaysApply: true
 5. Переиспользуемая секция с разным контентом — Pug mixin в `src/components/mixins/`.
 6. Каждая секция или блок имеет отдельный SCSS-файл в `src/styles/components/`.
 7. Новый SCSS-файл должен быть подключен в `src/styles/styles.scss`.
-8. Изображения — только `src/assets/img/`.
-9. Шрифты — только `src/assets/fonts/`.
+8. Изображения — только `src/assets/img/`; в Pug — через `+picture` или `asset()`, после добавления — `npm run images`.
+9. Шрифты — только `src/assets/fonts/`, woff2, через `fontFace` в `fonts.scss`.
 10. В `public/` должен быть только `robots.txt`.
+11. Повторяющийся контент — в `src/data/*.json` (в Pug — `data.<имя файла>`).
+12. Библиотеки (Swiper, Fancybox…) — только в ленивом модуле блока, не глобально.
+13. Десктоп — в пикселях макета, масштаб делает zoom (`desktop-scale.mdc`).
+14. Перед сдачей: `npm run build` и `npm run visual -- --pages=<страница>` без замечаний.
 
 ## Запрещено
 
@@ -36,4 +40,6 @@ alwaysApply: true
 - Дублировать разметку вместо `include` или `mixin`.
 - Класть assets в `public/`.
 - Использовать внешние шрифты.
+- Писать пути `/src/assets/…` или `/assets/…` руками.
+- Подключать библиотеки в `main.js` или `styles.scss`.
 - Менять архитектуру без прямого запроса.

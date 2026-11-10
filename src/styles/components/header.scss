@@ -1,0 +1,46 @@
+@use '../core' as *;
+
+// Шапка фиксированная, вне .page-scale (fixed внутри контейнера не работает).
+// Сама шапка — контейнер, масштабируется внутренний &_container тем же коэффициентом, что и main.
+// Размеры и отступы — на &_container и внутри: они масштабируются вместе с ним.
+//
+// html[data-has-intro="true"] (мета страницы @has_intro): шапка прозрачная поверх первого экрана,
+// после него — сплошная (класс is-solid ставит scripts/components/initHeader.js).
+// Без JS шапка всегда сплошная.
+.header {
+  $header: &;
+
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: $z-header;
+  container-type: inline-size;
+  background: $color-bg;
+  color: $color-text;
+
+  @include withMotion {
+    transition:
+      background-color $duration $easing,
+      color $duration $easing,
+      box-shadow $duration $easing;
+  }
+
+  &_container {
+    @include container;
+    @include pageZoom;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    min-height: var(--header-h);
+  }
+
+  &.is-solid {
+    box-shadow: 0 1px 0 $color-line;
+  }
+
+  .is-js[data-has-intro='true'] &:not(.is-solid) {
+    background: transparent;
+    color: $color-on-intro;
+  }
+}

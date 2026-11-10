@@ -1,0 +1,98 @@
+@use 'core' as *;
+
+// Масштаб считается там, где объявлен (на зумируемом элементе), и наследуется числом:
+// внутри можно делить на var(--page-zoom) — см. «Ловушки внутри zoom» в desktop-scale.mdc
+@property --page-zoom {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 1;
+}
+
+// Сколько секция может выйти за колонку до края экрана (в пикселях макета).
+// До $scale-to — 0, шире — пустые поля по бокам. Для лент и фонов на всю ширину
+@property --section-bleed {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 0px;
+}
+
+:root {
+  --page-max: #{$design-desktop};
+  --page-gutter: #{$page-gutter};
+  --section-py: #{$section-py};
+  --header-h: #{$header-h};
+
+  @include mediaMax($breakpoint-xl) {
+    --page-max: 100%;
+    --page-gutter: #{$page-gutter-lg};
+  }
+
+  @include mediaMax($breakpoint-md) {
+    --page-gutter: #{$page-gutter-md};
+    --section-py: #{$section-py-md};
+    --header-h: #{$header-h-md};
+  }
+}
+
+body {
+  background: $color-bg;
+  color: $color-text;
+  font-family: $font-main;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+// Обёртка всей страницы. clip, а не hidden: hidden ломает position: sticky
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  overflow-x: clip;
+}
+
+// Всё, что масштабируется вместе с макетом: main и подвал.
+// max-width не ставить: на широких экранах фоны и ленты должны идти до краёв
+.page-scale {
+  container-type: inline-size;
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  width: 100%;
+
+  > * {
+    @include pageZoom;
+  }
+}
+
+.main {
+  flex: 1 0 auto;
+
+  // Шапка фиксированная: без интро контент начинается под ней.
+  // main масштабируется, шапка тоже — отступ в пикселях макета совпадает с её высотой
+  [data-has-intro='false'] & {
+    padding-top: var(--header-h);
+  }
+}
+
+// Ссылка «к содержимому» для клавиатуры
+.skip-link {
+  @include visuallyHidden;
+
+  &:focus {
+    position: fixed !important;
+    top: 8px;
+    left: 8px;
+    z-index: $z-modal + 1;
+    width: auto;
+    height: auto;
+    margin: 0;
+    padding: 8px 16px;
+    clip: auto;
+    background: $color-bg;
+    color: $color-text;
+  }
+}
+
+.visually-hidden {
+  @include visuallyHidden;
+}

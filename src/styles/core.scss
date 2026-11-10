@@ -1,0 +1,3 @@
+// Переменные и миксины одной строкой. В каждом SCSS-файле: @use '../core' as *;
+@forward 'variables';
+@forward 'mixins';

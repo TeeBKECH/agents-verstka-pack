@@ -1,3 +1,5 @@
 .tmp/
 build/
+build-cms/
 node_modules/
+.env*.local

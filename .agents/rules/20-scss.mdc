@@ -9,6 +9,7 @@ alwaysApply: true
 
 ## Файлы
 
+- Каждый файл начинается с `@use '../core' as *;` (в `src/styles/*.scss` — `@use 'core' as *;`)
 - Переменные: `src/styles/variables.scss`
 - Миксины: `src/styles/mixins.scss`
 - Шрифты: `src/styles/fonts.scss`
@@ -55,6 +56,10 @@ src/styles/components/hero.scss
 
 Основные цвета, брейкпоинты и повторяемые значения хранить в `variables.scss`.
 
+## Десктоп
+
+От `$scale-from` все размеры — в пикселях макета, масштаб делает zoom (`desktop-scale.mdc`). Не писать `vw`/`clamp()` под ширину экрана для десктопа.
+
 ## Медиазапросы
 
 Медиазапросы писать только через миксины из `mixins.scss`.
@@ -75,3 +80,5 @@ background-image: url('#{$img}/hero/bg.jpg');
 ```
 
 Не использовать относительные пути `../../assets/img`.
+
+CSS библиотек в `styles.scss` не подключать — только в JS-модуле блока.

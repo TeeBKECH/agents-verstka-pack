@@ -1,0 +1,46 @@
+@use '../core' as *;
+
+// Карта страниц (index.html): список всех страниц вёрстки для клиента и проверки.
+.page-map {
+  &_list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+
+  &_link {
+    display: block;
+    height: 100%;
+    padding: 20px 24px;
+    border: 1px solid $color-line;
+    transition: border-color $duration $easing;
+
+    @include onlyDescHover {
+      &:hover {
+        border-color: $color-accent;
+      }
+    }
+
+    @include focusRing;
+  }
+
+  &_name {
+    display: block;
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  &_text {
+    display: block;
+    margin-top: 6px;
+    color: $color-muted;
+    font-size: 14px;
+  }
+
+  &_file {
+    display: block;
+    margin-top: 12px;
+    color: $color-muted;
+    font-size: 12px;
+  }
+}
