@@ -1,0 +1,53 @@
+@use 'sass:math';
+
+// Переменные проекта. Только значения — CSS отсюда не выводится.
+// Подключение в любом SCSS-файле: @use '../core' as *; (в styles.scss — @use 'core' as *;)
+
+// ── Макет ────────────────────────────────────────────────
+$design-desktop: 1440px; // ширина десктопного макета
+$design-mobile: 390px; // ширина мобильного макета
+
+// ── Масштаб десктопа (правило desktop-scale) ─────────────
+// От $scale-from до $scale-to вся страница = макет × (ширина окна / $design-desktop).
+// Шире $scale-to масштаб стоит, контент — колонка по центру, фоны — до краёв.
+$use-desktop-scale: true;
+$scale-from: 1280px;
+$scale-to: 1920px;
+$zoom-min: math.div($scale-from, $design-desktop);
+$zoom-max: math.div($scale-to, $design-desktop);
+
+// ── Брейкпоинты (для mediaMax) ───────────────────────────
+// Ниже $scale-from — обычная адаптивная вёрстка.
+$breakpoint-xl: $scale-from - 1px; // 1279 — планшет горизонтально и маленькие ноутбуки
+$breakpoint-lg: 1023px; // планшет
+$breakpoint-md: 767px; // телефон горизонтально
+$breakpoint-sm: 479px; // телефон
+
+// ── Сетка ────────────────────────────────────────────────
+$page-gutter: 60px; // поле страницы на десктопе (в пикселях макета)
+$page-gutter-lg: 40px;
+$page-gutter-md: 20px;
+$section-py: 120px; // вертикальный отступ секции на десктопе
+$section-py-md: 64px;
+
+// ── Цвета ────────────────────────────────────────────────
+$color-bg: #ffffff;
+$color-text: #1f1f1f;
+$color-muted: #6b6b6b;
+$color-line: #e2e2e2;
+$color-accent: #2f5bea;
+$color-white: #ffffff;
+$color-black: #000000;
+
+// ── Шрифты ───────────────────────────────────────────────
+$font-main: system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+
+// ── Движение и слои ──────────────────────────────────────
+$duration: 0.3s;
+$easing: cubic-bezier(0.2, 0.7, 0.2, 1);
+$z-header: 100;
+$z-modal: 1000;
+
+// ── Пути к ассетам ───────────────────────────────────────
+$img: '@/assets/img';
+$fonts: '@/assets/fonts';

@@ -1,14 +1,18 @@
 //- @title: Карта страниц
-//- @description: Обзор экранов сайта для клиента: разделы и готовность страниц.
-//- @page_class: links
-//- @has_intro: false
+//- @description: Все страницы вёрстки со ссылками — для клиента и для проверки.
+//- @page_class: map
+//- @robots: noindex, nofollow
 extends ../layouts/default.pug
 
 block content
-  -
-    const pages = [
-      {
-        title: 'Главная страница',
-        href: 'main.html',
-      },
-    ]
+  section.section
+    .section_container.page-map
+      h1.section_title Карта страниц
+      ul.page-map_list
+        each p in pages.filter((p) => p.name !== 'index')
+          li
+            a.page-map_link(href=p.href)
+              span.page-map_name= p.title
+              if p.description
+                span.page-map_text= p.description
+              span.page-map_file= p.href

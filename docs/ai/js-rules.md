@@ -1,91 +1,75 @@
 # JavaScript Rules
 
-## Общие правила
-
-JavaScript должен быть модульным.
-
-Структура:
+## Структура
 
 ```txt
 src/scripts/
-  components/
-  pages/
-  utils/
-  main.js
+  components/   модули блоков: init(elements)
+  pages/        скрипты страниц: pages/<data-page>.js
+  utils/        lazyInit, pageScript, reveal, scale…
+  main.js       точка входа
 ```
 
 ## main.js
 
-`main.js` — точка входа.
+Только подключение и запуск: стили, `initReveal()`, реестр ленивых компонентов, `initPageScript()`. Логику сюда не писать.
 
-В `main.js` разрешено:
+## Компоненты: ленивая загрузка
 
-- импортировать модули;
-- запускать инициализацию;
-- подключать глобальные библиотеки;
-- вызывать функции инициализации.
-
-Не писать в `main.js` большие независимые куски логики.
-
-## Components
-
-Логика переиспользуемых UI-компонентов находится в:
-
-```txt
-src/scripts/components/
-```
-
-Пример:
-
-```txt
-src/scripts/components/initSliders.js
-src/scripts/components/initModals.js
-src/scripts/components/initTabs.js
-```
-
-## Pages
-
-Логика конкретных страниц находится в:
-
-```txt
-src/scripts/pages/
-```
-
-Пример:
-
-```txt
-src/scripts/pages/homePage.js
-src/scripts/pages/contactsPage.js
-```
-
-## Utils
-
-Вспомогательные функции находятся в:
-
-```txt
-src/scripts/utils/
-```
-
-Пример:
-
-```txt
-src/scripts/utils/dom.js
-src/scripts/utils/media.js
-```
-
-## Пример подключения
+Модуль блока (и его библиотека с CSS) грузится, только если блок есть на странице, и только когда он подходит к экрану. Регистрация — в `main.js`:
 
 ```js
-import { initSliders } from './components/initSliders.js';
-import { initTabs } from './components/initTabs.js';
-
-initSliders();
-initTabs();
+initLazyComponents({
+  '[data-slider]': () => import('./components/initSliders.js'),
+  '[data-fancybox]': () => import('./components/initGallery.js'),
+  '[data-tabs]': () => import('./components/initTabs.js'),
+})
 ```
+
+Модуль экспортирует `init(elements)` — массив найденных элементов:
+
+```js
+// components/initTabs.js
+export function init(roots) {
+  roots.forEach((root) => {
+    // …
+  })
+}
+```
+
+- Библиотеки (Swiper, Fancybox и т. п.) и их CSS импортируются **только** в модуле блока, никогда в `main.js` или `styles.scss`.
+- Блок находится по data-атрибуту. Не привязываться к id и порядку элементов: CMS добавляет свои обёртки.
+- Модуль должен выдерживать повторный вызов (проверять, что блок уже инициализирован).
+- Если блок нужен сразу на первом экране — `initLazyComponents({...}, { eager: true })` отдельным вызовом.
+
+## Скрипт страницы
+
+`<body data-page="contacts">` → `src/scripts/pages/contacts.js` (или `pages/contacts/index.js`), экспорт `init()`. Имя берётся из атрибута, а не из адреса: в CMS адреса другие, атрибут выставляет шаблон.
+
+Сюда — только то, что нужно одной странице. Всё, что может повториться, — в `components/`.
+
+## Утилиты
+
+| Файл | Что |
+|---|---|
+| `utils/lazyInit.js` | `initLazyComponents(registry, options)` |
+| `utils/pageScript.js` | запуск `pages/<data-page>.js` |
+| `utils/reveal.js` | появление `[data-reveal]` при прокрутке |
+| `utils/scale.js` | `getPageZoom(el)` — масштаб десктопа для расчётов |
+
+## Масштаб десктопа в JS
+
+Внутри `.page-scale` действует `zoom` (правило `desktop-scale.mdc`):
+
+- `getBoundingClientRect()` — пиксели окна, уже с масштабом;
+- `offsetWidth`, `clientWidth`, `scrollLeft`, значения из CSS — пиксели макета;
+- не смешивать в одной формуле; перевод — делением на `getPageZoom(el)`;
+- окна, тултипы, `position: fixed` — создавать в `body` (блок `modals` в layout), не внутри `.page-scale`.
 
 ## Запрещено
 
-- Смешивать всю логику в одном `main.js`.
-- Дублировать одинаковую JS-логику в разных файлах.
-- Создавать модуль без необходимости.
-- Писать page-specific код в `components/`, если он нужен только одной странице.
+- Писать логику в `main.js`.
+- Импортировать библиотеки глобально.
+- Дублировать одинаковую логику в разных файлах.
+- Искать элементы по id и порядку, если блок может повториться или попасть в CMS.
+- Писать page-specific код в `components/`.

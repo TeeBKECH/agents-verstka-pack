@@ -1,21 +1,44 @@
-//- Mixins import here
+//- Все миксины из components/mixins подключаются здесь одной строкой.
+//- Файла _all.pug на диске нет: список собирает сборка (vite.config.mjs → mixinsIndexPlugin).
+include ../components/mixins/_all.pug
 
+- const site = data.site || {}
 
 doctype html
-- const hasIntro = page.has_intro !== false && String(page.has_intro || '').toLowerCase() !== 'false'
-html(
-  lang="ru"
-  data-has-intro=(hasIntro ? 'true' : 'false')
-)
+html(lang=site.lang || 'ru')
   head
     meta(charset="UTF-8")
-    meta(name="viewport" content="width=device-width, initial-scale=1.0")
-    title= page.title || 'Заголовок страницы'
+    meta(name="viewport" content="width=device-width, initial-scale=1")
+    title= page.title
     if page.description
       meta(name="description" content=page.description)
-  body.body
-    .page(class=`${page.page_class ? 'page--' + page.page_class : ''}`)
+    if page.robots
+      meta(name="robots" content=page.robots)
+    if site.url && page.canonical
+      link(rel="canonical" href=site.url + page.canonical)
+    meta(property="og:type" content="website")
+    meta(property="og:title" content=page.title)
+    if page.description
+      meta(property="og:description" content=page.description)
+    if site.url && site.ogImage
+      meta(property="og:image" content=site.url + '/' + site.ogImage)
+    if site.themeColor
+      meta(name="theme-color" content=site.themeColor)
+    if hasAsset('img/favicon/favicon.svg')
+      link(rel="icon" href=asset('img/favicon/favicon.svg') type="image/svg+xml")
+    //- Класс is-js до отрисовки: стили, которые прячут блоки до анимации, работают только с JS
+    script.
+      document.documentElement.classList.add('is-js')
+    block head
+  //- data-page — имя страницы для scripts/pages/<имя>.js. В CMS шаблон ставит его сам
+  body.body(data-page=page.name)
+    a.skip-link(href="#main") Перейти к содержимому
+    .page(class=page.page_class ? `page--${page.page_class}` : null)
       include ../components/sections/header.pug
-      main.main(class=`${page.page_class ? 'main--' + page.page_class : ''}`)
-        block content
-      include ../components/sections/footer.pug
+      //- Всё, что масштабируется вместе с макетом на десктопе (desktop-scale)
+      .page-scale
+        main.main#main(class=page.page_class ? `main--${page.page_class}` : null)
+          block content
+        include ../components/sections/footer.pug
+    //- Окна, всплывашки, position: fixed — вне .page-scale, иначе их собьёт масштаб
+    block modals

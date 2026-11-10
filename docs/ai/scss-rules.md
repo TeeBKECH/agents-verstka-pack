@@ -4,101 +4,71 @@
 
 Все стили пишутся на SCSS.
 
-Основные файлы:
-
 ```txt
-src/styles/variables.scss
-src/styles/mixins.scss
-src/styles/fonts.scss
+src/styles/core.scss         variables + mixins одной строкой (@forward)
+src/styles/variables.scss    только значения, CSS не выводит
+src/styles/mixins.scss       миксины
+src/styles/base.scss         токены :root, body, .page, .page-scale
+src/styles/fonts.scss        @font-face
 src/styles/reset.scss
-src/styles/styles.scss
-src/styles/components/
+src/styles/styles.scss       точка подключения
+src/styles/components/       один BEM-блок — один файл
 ```
 
-## Порядок подключения в styles.scss
+## Подключение переменных и миксинов
 
-Рекомендуемый порядок:
+Каждый SCSS-файл подключает их сам, первой строкой:
 
 ```scss
-@import 'aos/dist/aos.css';
-@import 'swiper/css';
-@import 'swiper/css/navigation';
-@import 'swiper/css/pagination';
-@import 'swiper/css/thumbs';
-@import '@fancyapps/ui/dist/fancybox/fancybox.css';
+@use '../core' as *;   // в styles/components/*.scss
+@use 'core' as *;      // в styles/*.scss
+```
 
-@use 'variables' as *;
-@use 'mixins' as *;
+Автоматической подстановки нет: без этой строки переменные в файле не видны.
+
+## styles.scss
+
+Сначала база, затем компоненты:
+
+```scss
+@use 'core' as *;
+
 @use 'reset';
+@use 'base';
 @use 'fonts';
 
 @use 'components/section';
 @use 'components/header';
 @use 'components/footer';
+@use 'components/hero';   // новые компоненты — ниже
 ```
 
-Новые компонентные SCSS-файлы подключаются ниже базовых компонентов.
+CSS библиотек (Swiper, Fancybox) сюда **не** подключать: он импортируется в JS-модуле блока и грузится только на страницах, где этот блок есть (см. `js-rules.md`).
 
 ## Переменные
 
-Основные цвета, брейкпоинты, размеры и повторяемые значения хранить в:
+Все повторяемые значения — в `variables.scss`:
 
-```txt
-src/styles/variables.scss
-```
+- макет: `$design-desktop`, `$design-mobile`;
+- масштаб десктопа: `$use-desktop-scale`, `$scale-from`, `$scale-to`;
+- брейкпоинты: `$breakpoint-xl` (1279), `$breakpoint-lg` (1023), `$breakpoint-md` (767), `$breakpoint-sm` (479);
+- сетка: `$page-gutter*`, `$section-py*`;
+- цвета `$color-*`, шрифт `$font-main`, движение `$duration`, `$easing`, слои `$z-*`;
+- пути: `$img`, `$fonts`.
 
-Пример:
+Не хардкодить повторяющиеся цвета и размеры внутри компонентных файлов.
 
-```scss
-$color-white: #ffffff;
-$color-black: #000000;
-$color-text: #1f1f1f;
-$color-bg: #f7f3ec;
-$color-accent: #c7a76c;
+## Миксины
 
-$breakpoint-xl: 1440px;
-$breakpoint-lg: 1200px;
-$breakpoint-md: 992px;
-$breakpoint-sm: 768px;
-$breakpoint-xs: 576px;
-
-$img: '@/assets/img';
-$fonts: '@/assets/fonts';
-```
-
-Не хардкодить повторяющиеся цвета внутри компонентных файлов.
-
-## Миксины медиазапросов
-
-Медиазапросы писать только через миксины из:
-
-```txt
-src/styles/mixins.scss
-```
-
-Пример:
-
-```scss
-@mixin mediaMax($width) {
-  @media (max-width: $width) {
-    @content;
-  }
-}
-
-@mixin mediaMin($width) {
-  @media (min-width: $width) {
-    @content;
-  }
-}
-
-@mixin onlyDescHover() {
-  @media (hover: hover), (-ms-high-contrast: none) {
-    @content;
-  }
-}
-```
-
-Использование:
+| Миксин | Зачем |
+|---|---|
+| `mediaMax($bp)`, `mediaMin($bp)`, `mediaBetween($a, $b)` | медиазапросы — только через них |
+| `onlyDescHover` | `:hover` только на устройствах с мышью |
+| `withMotion`, `reducedMotion` | анимации с учётом «уменьшить движение» |
+| `container` | колонка контента: `max-width: var(--page-max)`, поля `var(--page-gutter)` |
+| `pageZoom` | масштаб десктопа (уже стоит на main, подвале и шапке — руками обычно не нужен) |
+| `fontFace($family, $file, $weight, $style)` | `@font-face` с woff2 и `font-display: swap` |
+| `visuallyHidden`, `focusRing`, `cover` | служебные |
 
 ```scss
 .hero {
@@ -110,29 +80,17 @@ src/styles/mixins.scss
 }
 ```
 
+## Десктоп: пиксели макета
+
+На десктопе (от `$scale-from`) все размеры — в пикселях макета, как в дизайне: масштаб делает `zoom` (правило `desktop-scale.mdc`). Не писать для десктопа `vw`, `clamp()` и формулы от ширины экрана. Ниже `$scale-from` — обычный адаптив через `mediaMax`.
+
+Токены страницы (`base.scss`): `--page-max`, `--page-gutter`, `--section-py`, `--page-zoom`, `--section-bleed`.
+
 ## Секции и блоки
 
-`section.scss` отвечает только за общий блок `.section`:
-
-- отступы секции;
-- фон секции;
-- контейнер секции;
-- модификаторы секции `.section--hero`, `.section--about` и т.д.
-
-Компонентный SCSS-файл отвечает за один BEM-блок.
-
-Пример:
-
-```txt
-src/styles/components/hero.scss → .hero
-src/styles/components/card.scss → .card
-```
+`section.scss` отвечает только за общий блок `.section`: отступы, фон, `&_container`, модификаторы секций. Компонентный файл отвечает за один BEM-блок: `hero.scss → .hero`, `card.scss → .card`.
 
 ## BEM и вложенность
-
-Использовать человекочитаемые селекторы.
-
-Хорошо:
 
 ```scss
 .hero {
@@ -141,7 +99,6 @@ src/styles/components/card.scss → .card
   &_content {}
   &_title {}
   &_text {}
-  &_button {}
 
   &--dark {
     #{$hero}_title {}
@@ -149,46 +106,30 @@ src/styles/components/card.scss → .card
 }
 ```
 
-Плохо:
+1. Вложенность — через `&`.
+2. Элементы — `&_element`.
+3. Модификаторы — `&--modifier` или `&-modifier`.
+4. Модификатор применяется к родительскому классу, дочерние элементы используют базовый класс.
+5. Интерполяция `#{$block}_element` — только внутри модификатора блока.
 
-```scss
-.h {}
-.h_t {}
-.block1 {}
-.item2 {}
-```
-
-## Правила вложенности
-
-1. Вложенность писать через `&`.
-2. Элементы писать через `&_element`.
-3. Модификаторы писать через `&--modifier` или `&-modifier`.
-4. Модификатор применяется к родительскому классу, а дочерние элементы используют базовый класс.
-5. Интерполяцию `#{$block}_element` использовать только внутри модификатора блока, когда нужно обратиться к элементу базового блока.
+Не использовать нечитаемые классы: `.h`, `.block1`, `.item2`.
 
 ## Assets в SCSS
 
-Пути к картинкам в `url()` писать через алиас:
+Пути к картинкам и шрифтам в `url()` — через переменные-алиасы:
 
 ```scss
-$img: '@/assets/img';
-
 .hero {
   background-image: url('#{$img}/hero/bg.jpg');
 }
 ```
 
-Запрещено:
-
-```scss
-background-image: url('../../assets/img/bg.jpg');
-```
+Запрещено: `url('../../assets/img/bg.jpg')`.
 
 ## Запрещено
 
-- Писать медиазапросы напрямую без миксина.
-- Дублировать стили секции в компонентных файлах.
-- Писать стили блока внутри `.section--name`.
-- Использовать нечитаемые классы.
-- Хардкодить повторяющиеся цвета.
-- Использовать относительные пути к assets в `url()`.
+- Медиазапросы без миксина.
+- Стили секции в компонентных файлах и стили блока внутри `.section--name`.
+- CSS библиотек в `styles.scss`.
+- `vw`/`clamp()` под ширину экрана для десктопа.
+- Нечитаемые классы, хардкод повторяющихся цветов, относительные пути к assets.

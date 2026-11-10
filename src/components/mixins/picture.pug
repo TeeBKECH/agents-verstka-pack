@@ -1,0 +1,27 @@
+//- Картинка: avif/webp, если рядом лежат такие же файлы (npm run images), иначе только исходник.
+//- Размеры обязательны — против сдвига вёрстки. Ниже первого экрана — ленивая загрузка.
+//-
+//- +picture({ src: 'hero/main.jpg', alt: 'Описание', w: 1440, h: 800 })
+//- +picture({ src: 'hero/main.jpg', mobile: 'hero/main-mobile.jpg', alt: '', w: 1440, h: 800, eager: true, cls: 'hero_picture' })
+//-
+//- src, mobile — путь от src/assets/img; eager — первый экран; cls — класс на <picture>;
+//- атрибуты вызова (+picture(...)(class="hero_img")) уходят на <img>.
+mixin picture(opts)
+  - const o = Object.assign({ alt: '', eager: false, mobileMedia: '(max-width: 767px)' }, opts || {})
+  - const variants = (file) => { const stem = file.replace(/\.(jpe?g|png)$/i, ''); if (stem === file) return []; return [['avif', 'image/avif'], ['webp', 'image/webp']].filter(([ext]) => hasAsset(`img/${stem}.${ext}`)).map(([ext, type]) => ({ srcset: asset(`img/${stem}.${ext}`), type })) }
+  picture(class=o.cls)
+    if o.mobile
+      each v in variants(o.mobile)
+        source(media=o.mobileMedia srcset=v.srcset type=v.type)
+      source(media=o.mobileMedia srcset=asset('img/' + o.mobile))
+    each v in variants(o.src)
+      source(srcset=v.srcset type=v.type)
+    img(
+      src=asset('img/' + o.src)
+      alt=o.alt
+      width=o.w
+      height=o.h
+      loading=(o.eager ? 'eager' : 'lazy')
+      decoding=(o.eager ? 'sync' : 'async')
+      fetchpriority=(o.eager ? 'high' : null)
+    )&attributes(attributes)

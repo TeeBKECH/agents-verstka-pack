@@ -1,8 +1,101 @@
 @use 'variables' as *;
 
-// Only Desctop Hover
+// ── Медиазапросы ─────────────────────────────────────────
+@mixin mediaMax($width) {
+  @media (max-width: $width) {
+    @content;
+  }
+}
+
+@mixin mediaMin($width) {
+  @media (min-width: $width) {
+    @content;
+  }
+}
+
+@mixin mediaBetween($min, $max) {
+  @media (min-width: $min) and (max-width: $max) {
+    @content;
+  }
+}
+
+// Наведение — только там, где есть мышь
 @mixin onlyDescHover() {
   @media (hover: hover), (-ms-high-contrast: none) {
     @content;
   }
+}
+
+// Анимация — только если человек не просил убрать движение
+@mixin withMotion() {
+  @media (prefers-reduced-motion: no-preference) {
+    @content;
+  }
+}
+
+@mixin reducedMotion() {
+  @media (prefers-reduced-motion: reduce) {
+    @content;
+  }
+}
+
+// ── Сетка ────────────────────────────────────────────────
+// Колонка контента: ширина макета, поля страницы, по центру
+@mixin container() {
+  width: 100%;
+  max-width: var(--page-max);
+  margin-inline: auto;
+  padding-inline: var(--page-gutter);
+}
+
+// Масштаб десктопа: ставится на элемент, родитель которого — контейнер (container-type: inline-size).
+// Уже стоит на детях .page-scale (main, подвал) и на .header_container. См. .agents/rules/desktop-scale.mdc
+@mixin pageZoom() {
+  @if $use-desktop-scale {
+    @include mediaMin($scale-from) {
+      --page-zoom: clamp(#{$zoom-min}, tan(atan2(100cqw, #{$design-desktop})), #{$zoom-max});
+      zoom: var(--page-zoom);
+    }
+  }
+}
+
+// ── Шрифты ───────────────────────────────────────────────
+// @include fontFace('Inter', 'inter/inter-regular', 400);  → src/assets/fonts/inter/inter-regular.woff2
+@mixin fontFace($family, $file, $weight: 400, $style: normal) {
+  @font-face {
+    font-family: $family;
+    src: url('#{$fonts}/#{$file}.woff2') format('woff2');
+    font-weight: $weight;
+    font-style: $style;
+    font-display: swap;
+  }
+}
+
+// ── Служебное ────────────────────────────────────────────
+@mixin visuallyHidden() {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@mixin focusRing($color: $color-accent) {
+  &:focus-visible {
+    outline: 2px solid $color;
+    outline-offset: 2px;
+  }
+}
+
+// Картинка заполняет блок: родителю — position: relative
+@mixin cover() {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }

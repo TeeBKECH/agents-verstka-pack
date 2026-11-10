@@ -36,13 +36,22 @@ include ../components/sections/footer.pug
 src/components/mixins/
 ```
 
-и оформить как Pug mixin.
+и оформить как Pug mixin (один миксин — один файл). Подключать не нужно: layout подключает всю папку сам.
 
 Миксин вызывается через:
 
 ```pug
 +MixinName(data)
 ```
+
+## Данные и файлы
+
+- Повторяющийся контент — `src/data/*.json`, в Pug — `data.<имя>` и `each`.
+- Картинки — `+picture({ src, alt, w, h })`, остальные файлы — `asset('img/logo.svg')`.
+- Где выводятся данные будущей CMS — комментарий `//- CMS: <поле>`.
+- Поведение блока — через data-атрибут (`data-slider`, `data-reveal`), не через id.
+
+Подробно — `docs/ai/pug-rules.md`.
 
 ## Запрещено
 
