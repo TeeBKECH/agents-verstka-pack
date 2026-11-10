@@ -16,6 +16,8 @@
 - `docs/ai/scss-rules.md`
 - `docs/ai/js-rules.md`
 
+Масштаб десктопа (zoom 1280–1920, широкие экраны до 2560) — `.agents/rules/desktop-scale.mdc`. Применять при вёрстке десктопа, в SCSS, JS и PHP-шаблонах.
+
 ## Главный workflow агента
 
 Перед созданием или изменением кода:
