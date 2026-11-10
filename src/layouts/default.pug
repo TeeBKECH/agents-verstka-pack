@@ -3,9 +3,12 @@
 include ../components/mixins/_all.pug
 
 - const site = data.site || {}
+//- @has_intro: у страницы есть первый экран (интро), шапка лежит поверх него прозрачной.
+//- По умолчанию true; страницам без интро — //- @has_intro: false
+- const hasIntro = String(page.has_intro === undefined ? 'true' : page.has_intro).toLowerCase() !== 'false'
 
 doctype html
-html(lang=site.lang || 'ru')
+html(lang=site.lang || 'ru' data-has-intro=(hasIntro ? 'true' : 'false'))
   head
     meta(charset="UTF-8")
     meta(name="viewport" content="width=device-width, initial-scale=1")

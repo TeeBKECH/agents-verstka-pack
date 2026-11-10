@@ -52,6 +52,7 @@ export function init(roots) {
 
 | Файл | Что |
 |---|---|
+| `components/initHeader.js` | прозрачная шапка поверх `[data-intro]`, класс `is-solid` (не ленивый — подключён в `main.js`) |
 | `utils/lazyInit.js` | `initLazyComponents(registry, options)` |
 | `utils/pageScript.js` | запуск `pages/<data-page>.js` |
 | `utils/reveal.js` | появление `[data-reveal]` при прокрутке |

@@ -67,6 +67,16 @@ each item in data.about
 
 Где выводятся данные будущей CMS — комментарий `//- CMS: <поле>`.
 
+## Первый экран
+
+Секция первого экрана — с атрибутом `data-intro`, страница без него — `//- @has_intro: false` в мета (подробно — `project-rules.md`, «Шапка и первый экран»):
+
+```pug
+section.section.section--intro(data-intro)
+  .section_container
+    h1.intro_title Заголовок
+```
+
 ## Картинки
 
 Только через миксин `+picture` (или `asset()` для svg/иконок):

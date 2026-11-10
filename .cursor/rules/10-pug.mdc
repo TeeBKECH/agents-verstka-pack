@@ -50,6 +50,7 @@ src/components/mixins/
 - Картинки — `+picture({ src, alt, w, h })`, остальные файлы — `asset('img/logo.svg')`.
 - Где выводятся данные будущей CMS — комментарий `//- CMS: <поле>`.
 - Поведение блока — через data-атрибут (`data-slider`, `data-reveal`), не через id.
+- Первый экран — секция с `data-intro`; страница без него — мета `//- @has_intro: false` (шапка сразу сплошная, контент под шапкой).
 
 Подробно — `docs/ai/pug-rules.md`.
 

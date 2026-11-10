@@ -67,9 +67,24 @@ extends ../layouts/default.pug
 - `@title`, `@description` — заголовок и описание страницы;
 - `@page` — имя для `body[data-page]` и `scripts/pages/<имя>.js` (по умолчанию — имя файла);
 - `@page_class` — модификаторы `page--…` и `main--…`;
+- `@has_intro` — есть ли у страницы первый экран, поверх которого лежит прозрачная шапка (по умолчанию `true`; страницам без интро — `false`), см. «Шапка и первый экран»;
 - `@robots`, `@canonical` — при необходимости.
 
 Новая страница сама появляется на карте страниц (`index.html`).
+
+## Шапка и первый экран
+
+Шапка фиксированная (`position: fixed`), высота — `--header-h` (`$header-h`, `$header-h-md` в `variables.scss`). Поведение зависит от `@has_intro` страницы → `html[data-has-intro]`:
+
+| `@has_intro` | Шапка | Контент |
+|---|---|---|
+| `true` (по умолчанию) | прозрачная, цвет текста `$color-on-intro`, пока под ней первый экран; после него — сплошная, класс `is-solid` | интро начинается от верха окна, свой контент сдвигает вниз на `var(--header-h)` |
+| `false` | сразу сплошная | `main` получает `padding-top: var(--header-h)` |
+
+- Интро — секция с атрибутом `data-intro`; если его нет, первая секция в `main`.
+- Класс `is-solid` ставит `scripts/components/initHeader.js`. Без JS шапка сплошная.
+- Стили обоих состояний — в `header.scss`: прозрачное — селектор `.is-js[data-has-intro='true'] .header:not(.is-solid)`, сплошное — `.header.is-solid` и обычные стили `.header`.
+- Высота интро «на весь экран» внутри масштаба — `calc(100svh / var(--page-zoom))`, не `100vh` (см. desktop-scale.mdc).
 
 ## Данные
 

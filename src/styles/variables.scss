@@ -30,12 +30,17 @@ $page-gutter-md: 20px;
 $section-py: 120px; // вертикальный отступ секции на десктопе
 $section-py-md: 64px;
 
+// ── Шапка ────────────────────────────────────────────────
+$header-h: 80px; // высота шапки на десктопе (в пикселях макета)
+$header-h-md: 64px;
+
 // ── Цвета ────────────────────────────────────────────────
 $color-bg: #ffffff;
 $color-text: #1f1f1f;
 $color-muted: #6b6b6b;
 $color-line: #e2e2e2;
 $color-accent: #2f5bea;
+$color-on-intro: #ffffff; // текст шапки поверх первого экрана
 $color-white: #ffffff;
 $color-black: #000000;
 

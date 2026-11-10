@@ -20,6 +20,7 @@
   --page-max: #{$design-desktop};
   --page-gutter: #{$page-gutter};
   --section-py: #{$section-py};
+  --header-h: #{$header-h};
 
   @include mediaMax($breakpoint-xl) {
     --page-max: 100%;
@@ -29,6 +30,7 @@
   @include mediaMax($breakpoint-md) {
     --page-gutter: #{$page-gutter-md};
     --section-py: #{$section-py-md};
+    --header-h: #{$header-h-md};
   }
 }
 
@@ -64,6 +66,12 @@ body {
 
 .main {
   flex: 1 0 auto;
+
+  // Шапка фиксированная: без интро контент начинается под ней.
+  // main масштабируется, шапка тоже — отступ в пикселях макета совпадает с её высотой
+  [data-has-intro='false'] & {
+    padding-top: var(--header-h);
+  }
 }
 
 // Ссылка «к содержимому» для клавиатуры
