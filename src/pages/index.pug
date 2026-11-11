@@ -1,19 +1,92 @@
 //- @title: Карта страниц
-//- @description: Все страницы вёрстки со ссылками — для клиента и для проверки.
+//- @description: Все страницы вёрстки по разделам: что готово, что в работе, что в плане.
 //- @page_class: map
 //- @robots: noindex, nofollow
 //- @has_intro: false
+//- @page: index
 extends ../layouts/default.pug
 
+//- Готовность страницы — мета в её .pug: //- @progress: 0–100 и //- @status: review (на проверке).
+//- Разделы и план — src/data/sitemap.json (если файла нет — карточки по всем страницам из src/pages).
 block content
-  section.section
-    .section_container.page-map
-      h1.section_title Карта страниц
-      ul.page-map_list
-        each p in pages.filter((p) => p.name !== 'index')
-          li
-            a.page-map_link(href=p.href)
-              span.page-map_name= p.title
-              if p.description
-                span.page-map_text= p.description
-              span.page-map_file= p.href
+  -
+    var STATUS = { done: 'Готово', review: 'На проверке', wip: 'В работе', todo: 'В плане' }
+    var built = {}
+    pages.forEach(function (p) { built[p.name] = p })
+    var statusOf = function (progress, status) { return status || (progress >= 100 ? 'done' : progress > 0 ? 'wip' : 'todo') }
+    var fromPage = function (p, extra) {
+      var progress = Number(p.meta.progress || 0)
+      return Object.assign({ title: p.title, href: p.href, url: p.href, description: p.description }, extra || {}, { href: p.href, progress: progress, status: statusOf(progress, p.meta.status) })
+    }
+    var used = {}
+    var groups = data.sitemap ? data.sitemap.groups.map(function (g) {
+      return { title: g.title, items: g.items.map(function (it) {
+        var p = it.page && built[it.page]
+        if (p) { used[p.name] = true; return fromPage(p, it) }
+        var progress = Number(it.progress || 0)
+        return Object.assign({}, it, { description: it.note, progress: progress, status: statusOf(progress, it.status) })
+      }) }
+    }) : []
+    var rest = pages.filter(function (p) { return p.name !== 'index' && !used[p.name] })
+    if (rest.length) groups.push({ title: data.sitemap ? 'Ещё страницы' : 'Страницы', items: rest.map(function (p, i) { return fromPage(p, { n: String(i + 1).padStart(2, '0') }) }) })
+    var all = [].concat.apply([], groups.map(function (g) { return g.items }))
+    var count = function (s) { return all.filter(function (it) { return it.status === s }).length }
+    var total = all.length
+    var percent = total ? Math.round(all.reduce(function (a, it) { return a + it.progress }, 0) / total) : 0
+    var share = function (s) { return total ? (count(s) / total * 100).toFixed(2) + '%' : '0%' }
+    var plural3 = function (n, a, b, c) { var m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? a : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? b : c }
+
+  section.page-map(data-page-map)
+    .page-map_container
+      header.page-map_head
+        p.page-map_eyebrow #{(data.site && data.site.name) || 'Проект'} · вёрстка
+        h1.page-map_title Карта страниц
+        p.page-map_lead Все страницы сайта по разделам макета. Свёрстанные открываются по клику, готовность — на полосках.
+
+      .page-map_summary(data-reveal="custom")
+        .page-map_total
+          span.page-map_percent(data-map-percent=percent) #{percent}%
+          span.page-map_total-label готово по проекту · #{total} #{plural3(total, 'страница', 'страницы', 'страниц')}
+        .page-map_stack(role="img" aria-label=`Готово ${count('done')}, на проверке ${count('review')}, в работе ${count('wip')}, в плане ${count('todo')}`)
+          each s in ['done', 'review', 'wip', 'todo']
+            if count(s)
+              span.page-map_stack-part(class=`page-map_stack-part--${s}` style=`--share: ${share(s)}`)
+        ul.page-map_stats
+          each s in ['done', 'review', 'wip', 'todo']
+            li.page-map_stat(class=`page-map_stat--${s}`)
+              span.page-map_stat-value= count(s)
+              span.page-map_stat-label= STATUS[s]
+
+      .page-map_filters(role="group" aria-label="Показать страницы")
+        button.page-map_filter(type="button" data-map-filter="all" aria-pressed="true") Все #[span.page-map_filter-count= total]
+        each s in ['done', 'review', 'wip', 'todo']
+          if count(s)
+            button.page-map_filter(type="button" data-map-filter=s aria-pressed="false") #{STATUS[s]} #[span.page-map_filter-count= count(s)]
+
+      each group in groups
+        - var groupPercent = Math.round(group.items.reduce(function (a, it) { return a + it.progress }, 0) / group.items.length)
+        section.page-map_group(data-map-group)
+          .page-map_group-head
+            h2.page-map_group-title= group.title
+            span.page-map_group-meta #{group.items.filter(function (it) { return it.status === 'done' || it.status === 'review' }).length} из #{group.items.length} · #{groupPercent}%
+          ul.page-map_grid
+            each item in group.items
+              - var thumb = item.n && hasAsset('img/page-map/' + item.n + '.webp') ? 'img/page-map/' + item.n + '.webp' : null
+              li.page-map_item(data-status=item.status data-reveal="custom")
+                - var tag = item.href ? 'a' : 'div'
+                //- Свёрстанные страницы открываются в новой вкладке — карта остаётся под рукой
+                #{tag}.page-map_card(class=`page-map_card--${item.status}` href=item.href target=item.href ? '_blank' : null rel=item.href ? 'noopener' : null title=item.url && item.url !== '—' ? `Адрес: ${item.url}` : null)
+                  span.page-map_thumb
+                    if thumb
+                      img.page-map_img(src=asset(thumb) alt="" width="480" height="300" loading="lazy" decoding="async")
+                    span.page-map_number= item.n
+                    span.page-map_chip(class=`page-map_chip--${item.status}`)= STATUS[item.status]
+                    if item.href
+                      span.page-map_open Открыть ↗
+                  span.page-map_body
+                    span.page-map_name= item.title
+                    span.page-map_meta
+                      span= item.note || (item.sections ? `${item.sections} ${plural3(item.sections, 'секция', 'секции', 'секций')}` : '')
+                      span.page-map_percent-small #{item.progress}%
+                  span.page-map_bar(aria-hidden="true")
+                    span.page-map_bar-fill(style=`--progress: ${item.progress}%`)

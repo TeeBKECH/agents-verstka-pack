@@ -7,7 +7,8 @@
     "build:cms": "vite build --mode cms",
     "preview": "vite preview --open",
     "images": "node scripts/images.mjs",
-    "visual": "node scripts/visual.mjs"
+    "visual": "node scripts/visual.mjs",
+    "thumbs": "node scripts/page-map-thumbs.mjs"
   },
   "type": "module",
   "keywords": [],

@@ -14,6 +14,7 @@ initReveal()
 initLazyComponents({
   '[data-slider]': () => import('./components/initSliders.js'),
   '[data-fancybox]': () => import('./components/initGallery.js'),
+  '[data-page-map]': () => import('./components/initPageMap.js'),
 })
 
 initPageScript()

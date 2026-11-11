@@ -207,6 +207,9 @@ function pugMpaPlugin({ prettifyOnProd = true, isCms = false } = {}) {
         try {
           if (!req.url) return next()
           const url = new URL(req.url, 'http://localhost')
+          // Мета страниц читаем на каждый запрос: событие файловой системы может прийти
+          // на середине записи файла, и закешированная мета окажется пустой
+          if (/\.html$|\/$/.test(url.pathname) || !path.extname(url.pathname)) pages = scanPages()
           const page = resolvePageByUrlPath(url.pathname)
           if (!page) return next()
 
