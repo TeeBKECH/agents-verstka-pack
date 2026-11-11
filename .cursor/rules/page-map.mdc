@@ -10,7 +10,7 @@ alwaysApply: false
 что готово, что на проверке, что в работе, что в плане. Свёрстанные открываются по клику
 в новой вкладке. На сайт (CMS) не переносится, в индекс не попадает (`@robots: noindex, nofollow`).
 
-Файлы: `src/pages/index.pug`, `src/styles/components/page-map.scss`,
+Файлы: `src/pages/index.pug` (только `include` секции), `src/components/sections/page-map.pug`, `src/styles/components/page-map.scss`,
 `src/scripts/components/initPageMap.js`, данные — `src/data/sitemap.json` (необязательно),
 превью — `src/assets/img/page-map/<номер>.webp` (`npm run thumbs`).
 
