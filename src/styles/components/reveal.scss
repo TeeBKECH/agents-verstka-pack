@@ -2,7 +2,8 @@
 
 // Появление блока при прокрутке: атрибут data-reveal, класс ставит scripts/utils/reveal.js.
 // Без JS и при «уменьшить движение» блок виден сразу.
-.is-js [data-reveal] {
+// data-reveal="custom" — класс is-revealed ставится, а анимацию блок описывает сам (карта страниц и т. п.).
+.is-js [data-reveal]:not([data-reveal='custom']) {
   @include withMotion {
     opacity: 0;
     transform: translateY(24px);

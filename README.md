@@ -21,6 +21,7 @@ npm run dev
 | `npm run preview` | просмотр сборки |
 | `npm run images` | webp рядом с каждым jpg/png в `src/assets/img` (`-- --avif` — ещё avif) |
 | `npm run visual` | снимки страниц на 390–2560 в `.tmp/visual/` и проверки масштаба (первый раз — `npx playwright install chromium`) |
+| `npm run thumbs` | превью страниц для карты страниц из экранов макета `design/screens/desktop/` |
 
 ## Что есть в шаблоне
 
@@ -31,6 +32,7 @@ npm run dev
 - **Картинки**: `+picture` с avif/webp, размерами и ленивой загрузкой; `npm run images` готовит пары.
 - **Скрипты страниц** по `body[data-page]`, а не по адресу — работает в CMS.
 - **Визуальная проверка** на Playwright: прокрутка вбок, совпадение краёв контента, масштаб.
+- **Карта страниц** (`index.html`): сводка готовности, разделы, карточки с превью из макета и прогрессом. Готовность — мета `@progress` страницы, план — `src/data/sitemap.json`.
 
 ## Правила
 
